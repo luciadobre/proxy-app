@@ -9,6 +9,7 @@ import (
 	"net/url"
 )
 
+// json object
 type Todo struct {
 	UserID    int    `json:"userId"`
 	ID        int    `json:"id"`

@@ -15,7 +15,7 @@ func TestHandleTodoRequest(t *testing.T) {
 
 		target, _ := url.Parse("https://jsonplaceholder.typicode.com")
 		pretendServer := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			handleTodoRequest(w, request, target, httputil.NewSingleHostReverseProxy(target))
+			handleRequest(w, request, target, httputil.NewSingleHostReverseProxy(target))
 		})
 		pretendServer.ServeHTTP(reply, request)
 

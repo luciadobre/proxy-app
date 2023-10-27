@@ -2,11 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"strings"
 )
 
 // func NewProxy(rawUrl string) (*httputil.ReverseProxy, error) {
@@ -97,6 +97,7 @@ import (
 // 	http.ListenAndServe(":8080", nil)
 // }
 
+// struct for response + additional foo: bar field
 type Todo struct {
 	UserID    int    `json:"userId"`
 	ID        int    `json:"id"`
@@ -108,45 +109,37 @@ type Todo struct {
 func main() {
 	targetHost, _ := url.Parse("https://jsonplaceholder.typicode.com")
 
+	//fastest way to create a reverse proxy is to use this function
 	proxy := httputil.NewSingleHostReverseProxy(targetHost)
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		urlPath(w, r, targetHost, proxy)
-	})
-
-	http.ListenAndServe(":8080", nil)
+	http.Handle("/todos/1", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handleRequest(w, r, targetHost, proxy)
+	}))
+	//we start the server and use log.Fatal like in the documentation
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-func urlPath(w http.ResponseWriter, r *http.Request, target *url.URL, proxy *httputil.ReverseProxy) {
-	if r.URL.Path == "/todos/1" {
-		handleTodoRequest(w, r, target, proxy)
-	} else {
-		http.Error(w, "Not Found", http.StatusNotFound)
-	}
-}
-
-func handleTodoRequest(w http.ResponseWriter, r *http.Request, target *url.URL, proxy *httputil.ReverseProxy) {
-	r.URL.Path = strings.Replace(r.URL.Path, "/todos/1", "/todos/1", 1)
-	proxy.Director = func(req *http.Request) {
-		req.Host = target.Host
-		req.URL.Scheme = target.Scheme
-		req.URL.Host = target.Host
-	}
-
+func handleRequest(w http.ResponseWriter, r *http.Request, target *url.URL, proxy *httputil.ReverseProxy) {
+	//get target host
 	response, err := http.Get("https://jsonplaceholder.typicode.com/todos/1")
 	if err != nil {
 		log.Fatal(err)
 	}
+	//in case of error exit function
 	defer response.Body.Close()
 
-	var todo Todo
+	//where we store the data
+	todo := Todo{}
+
+	//NewDecoder reads the response and Decode fills in the fields
 	err = json.NewDecoder(response.Body).Decode(&todo)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	fmt.Printf("Data from Api: %+v", todo)
+	//modify data
 	todo.Foo = "bar"
 
-	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(todo)
 }

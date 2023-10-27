@@ -106,40 +106,47 @@ type Todo struct {
 }
 
 func main() {
-	target, _ := url.Parse("https://jsonplaceholder.typicode.com")
+	targetHost, _ := url.Parse("https://jsonplaceholder.typicode.com")
 
-	proxy := httputil.NewSingleHostReverseProxy(target)
+	proxy := httputil.NewSingleHostReverseProxy(targetHost)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/todos/1" {
-			r.URL.Path = strings.Replace(r.URL.Path, "/todos/1", "/todos/1", 1)
-			proxy.Director = func(req *http.Request) {
-				req.Host = target.Host
-				req.URL.Scheme = target.Scheme
-				req.URL.Host = target.Host
-			}
-
-			response, err := http.Get("https://jsonplaceholder.typicode.com/todos/1")
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer response.Body.Close()
-
-			var todo Todo
-			err = json.NewDecoder(response.Body).Decode(&todo)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			todo.Foo = "bar"
-
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(todo)
-			return
-		}
-
-		http.Error(w, "Not Found", http.StatusNotFound)
+		urlPath(w, r, targetHost, proxy)
 	})
 
 	http.ListenAndServe(":8080", nil)
+}
+
+func urlPath(w http.ResponseWriter, r *http.Request, target *url.URL, proxy *httputil.ReverseProxy) {
+	if r.URL.Path == "/todos/1" {
+		handleTodoRequest(w, r, target, proxy)
+	} else {
+		http.Error(w, "Not Found", http.StatusNotFound)
+	}
+}
+
+func handleTodoRequest(w http.ResponseWriter, r *http.Request, target *url.URL, proxy *httputil.ReverseProxy) {
+	r.URL.Path = strings.Replace(r.URL.Path, "/todos/1", "/todos/1", 1)
+	proxy.Director = func(req *http.Request) {
+		req.Host = target.Host
+		req.URL.Scheme = target.Scheme
+		req.URL.Host = target.Host
+	}
+
+	response, err := http.Get("https://jsonplaceholder.typicode.com/todos/1")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer response.Body.Close()
+
+	var todo Todo
+	err = json.NewDecoder(response.Body).Decode(&todo)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	todo.Foo = "bar"
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(todo)
 }

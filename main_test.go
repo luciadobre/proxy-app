@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -20,7 +21,7 @@ func TestHandleTodoRequest(t *testing.T) {
 		pretendServer.ServeHTTP(reply, request)
 
 		expected := `{"userId":1,"id":1,"title":"delectus aut autem","completed":false,"foo":"bar"}`
-		got := reply.Body.String()
+		got := strings.TrimSpace(reply.Body.String())
 
 		if got != expected {
 			t.Errorf("Got %s, want %s", got, expected)
